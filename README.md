@@ -1,3 +1,3 @@
 # Powershell-Scripts-for-Azure
 
-Miscelaneous Azure-related PowerShell scripts
+Miscellaneous Azure-related PowerShell scripts
