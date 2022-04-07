@@ -2,10 +2,9 @@
 
 
 # Input Variables
-$StorageAccounts = @() #StorageAccount array
 $StorageKinds = @('Storage','StorageV2','BlobStorage')
 $NumberofStorageAccounts = 15
-$TestRGName = "test_" + (-join ((48..57) + (97..122) | Get-Random -Count 20 | % {[char]$_}))
+$TestRGName = "test_" + (-join ((48..57) + (97..122) | Get-Random -Count 20 | ForEach-Object {[char]$_}))
 $TestRGLocation = "eastus"
 
 
@@ -54,7 +53,7 @@ New-AzResourceGroup -Name $TestRGName -Location $TestRGLocation
 for ($i = 1; $i -lt $NumberofStorageAccounts+1; $i++) {
     
     # Random names for StorageAccounts and Kinds
-    $TestStorageAccount = "test" + (-join ((48..57) + (97..122) | Get-Random -Count 20 | % {[char]$_}))
+    $TestStorageAccount = "test" + (-join ((48..57) + (97..122) | Get-Random -Count 20 | ForEach-Object {[char]$_}))
     $AccountKind = Get-Random $StorageKinds
     
     # Create a randomly named StorageAccount of random type
