@@ -22,6 +22,8 @@ $RecoveryServiceVaults = @() #Recovery Service Vault array
 # Set preferences
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "SilentlyContinue"
+$subscriptions = $null
+$RecoveryServiceVaults = $null
 
 # Import Modules
 Import-Module -Name Az.Accounts
@@ -46,6 +48,10 @@ catch {
 Write-Verbose -Message "Getting list of Subscriptions"
 $subscriptions = Get-AzSubscription | Out-GridView -Title "Select Subscriptions to search for Recovery Service Vaults" -PassThru
 
+if (!$subscriptions) {
+	Write-Host -Message "Please select an available subscription. Exiting script." -ForegroundColor Red
+	Exit
+}
 
 # Cycle through all Azure subscriptions and display the Recovery Service Vaults.
 try {
@@ -79,6 +85,10 @@ $subscriptions | Format-Table
 Write-verbose -Message "Recovery Service Vaults"
 $RecoveryServiceVault = $RecoveryServiceVaults |  Out-GridView -Title "Select the Recovery Service Vault to Migrate to LRS & Delete" -OutputMode Single
 
+if (!$RecoveryServiceVault) {
+	Write-Host -Message "Please select a Recovery Service Vault. Exiting script." -ForegroundColor Red
+	Exit
+}
 
 # Prepare working variables
 $VaultName = $RecoveryServiceVault.Name
@@ -94,21 +104,21 @@ Set-AzRecoveryServicesAsrVaultContext -Vault $VaultToDelete
 
 
 # Checks if the new vault has already been created in the same resource group
-$newVault = Get-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -ResourceGroupName $($VaultToDelete.ResourceGroupName)
 
-if ($newVault) {
+try {
+	$newVault = Get-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -ResourceGroupName $($VaultToDelete.ResourceGroupName)
 	Write-Verbose -Message "Recovery Service Vault [$($newVault.Name)] has already been created in Resource Group [$($newVault.ResourceGroupName)]"
 	Write-Host  "New Recovery Service Vault [$($newVault.name)] already created - Please remove this vault first" -ForegroundColor Red
-	Exit # Exits script for user remediation
-	
+	Exit # Exits script for user remediation}
 }
+catch {
+	# Creates a new vault with suffix -LRS in the same Resource Group and Region as selected RSV
+	Write-Verbose -Message "Creating new Recovery Service Vault: [$($VaultToDelete.Name)-LRS] ..."
+	New-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -Location $VaultToDelete.Location -ResourceGroupName $VaultToDelete.ResourceGroupName
+	$newVault = Get-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -ResourceGroupName $($VaultToDelete.ResourceGroupName)
+	Write-Verbose -Message "Recovery Service Vault [$($newVault.Name)] created in Resource Group [$($newVault.ResourceGroupName)] successfully"
 
-
-# Creates a new vault with suffix -LRS in the same Resource Group and Region as selected RSV
-Write-Verbose -Message "Creating new Recovery Service Vault: [$($VaultToDelete.Name)-LRS] ..."
-New-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -Location $VaultToDelete.Location -ResourceGroupName $VaultToDelete.ResourceGroupName
-$newVault = Get-AzRecoveryServicesVault -Name "$($VaultToDelete.Name)-LRS" -ResourceGroupName $($VaultToDelete.ResourceGroupName)
-Write-Verbose -Message "Recovery Service Vault [$($newVault.Name)] created in Resource Group [$($newVault.ResourceGroupName)] successfully"
+}
 
 
 # Change the storage replication type of the new vault to Locally Redundant
@@ -155,7 +165,9 @@ Write-Verbose -Message "New custom backup policy [$($customVaultPolicy.Name)] cr
 
 
 # Fetch all protected items and servers, and force dissable & delete them
-Write-Verbose -Message "Fetching all protected items and servers, force dissabling, deleting, and re-enabling them on the new vault. Please wait..."
+Write-Verbose -Message "Fetching all protected items and servers, force dissabling, deleting, and re-enabling them on the new vault."
+Write-Verbose -Message "Please wait. This may take a while..."
+
 $backupItemsVM = Get-AzRecoveryServicesBackupItem -BackupManagementType AzureVM -WorkloadType AzureVM -VaultId $VaultToDelete.ID
 $backupItemsSQL = Get-AzRecoveryServicesBackupItem -BackupManagementType AzureWorkload -WorkloadType MSSQL -VaultId $VaultToDelete.ID
 $backupItemsAFS = Get-AzRecoveryServicesBackupItem -BackupManagementType AzureStorage -WorkloadType AzureFiles -VaultId $VaultToDelete.ID
