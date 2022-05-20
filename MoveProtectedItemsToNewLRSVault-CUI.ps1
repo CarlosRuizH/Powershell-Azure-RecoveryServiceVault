@@ -17,7 +17,7 @@
 Write-Host "WARNING: Please ensure that you have at least PowerShell 7 and have upgraded to the latest Az module before running this script. Visit https://go.microsoft.com/fwlink/?linkid=2181071 for the procedure." -ForegroundColor Yellow
 
 # Input Variables
-$RecoveryServiceVaults = @() #Recovery Service Vault array
+$RecoveryServiceVaults = @() 		#Recovery Service Vault array
 
 # Set preferences
 $ErrorActionPreference = "Stop"
