@@ -248,6 +248,7 @@ else {
 	}
 }
 
+$newVault = Get-AzRecoveryServicesVault -Name "$($newVaultName)" -ResourceGroupName $($oldRecoveryServiceVault.ResourceGroupName)
 
 # Get Backup Protection Policies from the old Vault and move them to the new Vault
 Write-Log -Message "Looking for custom backup policies in vault [$($oldRecoveryServiceVault.Name)]"
