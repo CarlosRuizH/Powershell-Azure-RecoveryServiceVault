@@ -1,3 +1,3 @@
-# Powershell-Scripts-for-Azure
+# Powershell-Azure-RecoveryServiceVault
 
 Miscellaneous Azure-related PowerShell scripts
