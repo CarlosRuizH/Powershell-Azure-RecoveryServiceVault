@@ -193,63 +193,67 @@ else {
 
 
 # Checks if the new vault has already been created in the same resource group
-if (Get-AzRecoveryServicesVault -Name "$($newVaultName)" -ResourceGroupName $($oldRecoveryServiceVault.ResourceGroupName)) {
-	Write-Log -Message "Recovery Service Vault [$($newVaultName)] already exists in Resource Group [$($oldRecoveryServiceVault.ResourceGroupName)]"
-	
-	# Previous existing vault found. User options to proceed.
-	Write-Host -ForegroundColor Red "WARNING: Please select an option to proceed:"
-	Write-Host -ForegroundColor Green " OPTION: [1] Clean Migration." -NoNewline
-	Write-Host -foregroundcolor Yellow  " Delete Vault [$($newVaultName)] and all its content before migrating any items."
-	Write-Host -ForegroundColor Green " OPTION: [2] Continue Migration." -NoNewline 
-	Write-Host -foregroundcolor Yellow " Migrate all Backup Items to [$($newVaultName)] without deleting it first."
-    $response = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    Write-Log -Message "User Input - Wait-ForAnyKey: $($response.VirtualKeyCode)" -OnlyLog
-	Write-Host
+try {
+	$newVault = Get-AzRecoveryServicesVault -Name "$($newVaultName)" -ResourceGroupName $($oldRecoveryServiceVault.ResourceGroupName)
 
-	# Check selected option
-	if ($response.Character -eq '1') {
-		Write-Log -Message "Option [1] Selected. Please run DeleteAnyRecoveryServicesVault.ps1 on Vault [$($newVaultName)] and then re-run this script."
-		Write-Log -Message "DeleteAnyRecoveryServicesVault.ps1 can be found at https://github.com/CarlosRuizH/Powershell-Azure-RecoveryServiceVault" -OnlyLog
-		Write-Log -Message "Exiting script. No changes made."
-		Exit
-	}
-	elseif ($response.Character -eq '2') {
-		Write-Log -Message "Option [2] Selected. Migrating all Backup Items to [$($newVaultName)] without deleting it first."
+	if ($newVault) {
+		Write-Log -Message "Recovery Service Vault [$($newVaultName)] already exists in Resource Group [$($oldRecoveryServiceVault.ResourceGroupName)]"
 		
-		Write-Host -ForegroundColor Red "WARNING: This is a destructive process. ALL BACKUP DATA WILL BE DELETED!"
-		Write-Host -ForegroundColor Red "WARNING: Please select [Y] to proceed. "
-		$confirmation = read-host
+		# Previous existing vault found. User options to proceed.
+		Write-Host -ForegroundColor Red "WARNING: Please select an option to proceed:"
+		Write-Host -ForegroundColor Green " OPTION: [1] Clean Migration." -NoNewline
+		Write-Host -foregroundcolor Yellow  " Delete Vault [$($newVaultName)] and all its content before migrating any items."
+		Write-Host -ForegroundColor Green " OPTION: [2] Continue Migration." -NoNewline 
+		Write-Host -foregroundcolor Yellow " Migrate all Backup Items to [$($newVaultName)] without deleting it first."
+		$response = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+		Write-Log -Message "User Input - Wait-ForAnyKey: $($response.VirtualKeyCode)" -OnlyLog
+		Write-Host
 
-		# Final confirmation before taking action
-		if ($confirmation -ne 'y') {
-			Write-Host -ForegroundColor Green "No changes were made to Backup Items. Exiting script. Goodbye"
-			Write-Log -Message "User Cancellation. No changes were made to Backup Items. Exiting script. Goodbye" -OnlyLog
+		# Check selected option
+		if ($response.Character -eq '1') {
+			Write-Log -Message "Option [1] Selected. Please run DeleteAnyRecoveryServicesVault.ps1 on Vault [$($newVaultName)] and then re-run this script."
+			Write-Log -Message "DeleteAnyRecoveryServicesVault.ps1 can be found at https://github.com/CarlosRuizH/Powershell-Azure-RecoveryServiceVault" -OnlyLog
+			Write-Log -Message "Exiting script. No changes made."
+			Exit
+		}
+		elseif ($response.Character -eq '2') {
+			Write-Log -Message "Option [2] Selected. Migrating all Backup Items to [$($newVaultName)] without deleting it first."
+			
+			Write-Host -ForegroundColor Red "WARNING: This is a destructive process. ALL BACKUP DATA WILL BE DELETED!"
+			Write-Host -ForegroundColor Red "WARNING: Please select [Y] to proceed. "
+			$confirmation = read-host
+
+			# Final confirmation before taking action
+			if ($confirmation -ne 'y') {
+				Write-Host -ForegroundColor Green "No changes were made to Backup Items. Exiting script. Goodbye"
+				Write-Log -Message "User Cancellation. No changes were made to Backup Items. Exiting script. Goodbye" -OnlyLog
+				Exit
+			}
+		}
+		else {
+			Write-Log -Message "Invalid Option selected. Exiting script. No changes made."
 			Exit
 		}
 	}
-	else {
-		Write-Log -Message "Invalid Option selected. Exiting script. No changes made."
-		Exit
-	}
 }
-else {
+catch {
+	Write-Log -Message "Previous vault named [$($newVaultName)] not found."
 	Write-Log -Message "Creating new Recovery Service Vault: [$($newVaultName)] ..."
 	Write-Host
+	# Catch any errors during the creation of the new RSV
 	try {
 		$newVault = New-AzRecoveryServicesVault -Name "$($newVaultName)" -Location $oldRecoveryServiceVault.Location -ResourceGroupName $oldRecoveryServiceVault.ResourceGroupName
 		Write-Log -Message "Recovery Service Vault [$($newVaultName)] created in Resource Group [$($oldRecoveryServiceVault.ResourceGroupName)] successfully"
 	}
 	catch {
-		Write-Host -ForegroundColor Red "[ERROR] Error creating new Recovery Services Vault [$($newVaultName)]"
-		Write-Log -Message "Error creating new Recovery Services Vault [$($newVaultName)]" -OnlyLog
+		Write-Host -ForegroundColor Red "[ERROR] Error creating new Recovery Services Vault [$($newVaultName)]. Exiting script."
+		Write-Log -Message "Error creating new Recovery Services Vault [$($newVaultName)]. Exiting script." -OnlyLog
 		Write-Log -Message $_.Exception.Message
 		Write-Log -Message $_.Exception -OnlyLog
 		Exit
 	}
 }
 
-
-$newVault = Get-AzRecoveryServicesVault -Name "$($newVaultName)" -ResourceGroupName $($oldRecoveryServiceVault.ResourceGroupName)
 
 # Get Backup Protection Policies from the old Vault and move them to the new Vault
 Write-Log -Message "Looking for custom backup policies in vault [$($oldRecoveryServiceVault.Name)]"
