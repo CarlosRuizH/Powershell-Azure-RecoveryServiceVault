@@ -2,10 +2,8 @@
 
 PowerShell tools:
 * Help move and remove Recovery Service Vaults
-* Delete a Recovery Service Vault
 * Migrate Backup Items from one Recovery Service Vault to a new LRS RSV
 * Console-UI version of tools (CUI)
-
 
 ## [DeleteAnyRecoveryServicesVault.ps1]
 The PowerShell script is used to convert a Recovery Services Vault Backup Property from Geo-Redundant Storage (GRS) to Locally Redundant Storage (LRS) in Microsoft Azure. However, it's important to note that running this script will delete all backup data within the vault, so caution should be exercised.
